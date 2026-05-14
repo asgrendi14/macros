@@ -112,7 +112,7 @@
     /* ── FOOD PICKER MODAL ── */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: flex-end; justify-content: center; }
     .modal-overlay.open { display: flex; }
-    .modal { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 420px; max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
+    .modal { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 420px; height: 92vh; display: flex; flex-direction: column; overflow: hidden; }
     .modal-handle { width: 36px; height: 4px; background: var(--surface3); border-radius: 2px; margin: 12px auto 0; flex-shrink: 0; }
     .modal-header { padding: 14px 20px 10px; flex-shrink: 0; }
     .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 12px; }
@@ -130,7 +130,7 @@
     .library-item-cal { font-size: 14px; font-weight: 600; color: var(--text-muted); white-space: nowrap; margin-left: 12px; }
 
     /* Serving input step */
-    .serving-step { display: none; flex-direction: column; padding: 20px; gap: 16px; overflow-y: auto; }
+    .serving-step { display: none; flex-direction: column; padding: 20px; gap: 16px; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
     .serving-step.visible { display: flex; }
     .back-btn { background: none; border: none; color: var(--text-muted); font-size: 14px; font-family: 'Inter', sans-serif; cursor: pointer; text-align: left; padding: 0; display: flex; align-items: center; gap: 6px; }
     .serving-food-name { font-size: 22px; font-weight: 700; }
@@ -138,7 +138,7 @@
     .serving-input-wrap { display: flex; flex-direction: column; gap: 8px; }
     .serving-input-label { font-size: 13px; color: var(--text-muted); }
     .serving-qty-row { display: flex; align-items: center; gap: 12px; }
-    .serving-qty { flex: 1; background: var(--surface2); border: none; border-radius: var(--radius-sm); padding: 14px 16px; font-size: 28px; font-weight: 700; font-family: 'Inter', sans-serif; color: var(--text); outline: none; text-align: center; }
+    .serving-qty { flex: 1; background: var(--surface2); border: none; border-radius: var(--radius-sm); padding: 14px 16px; font-size: 28px; font-weight: 700; font-family: 'Inter', sans-serif; color: var(--text); outline: none; text-align: center; -webkit-text-size-adjust: 100%; }
     .serving-qty:focus { box-shadow: 0 0 0 2px var(--accent); }
     .qty-unit { font-size: 16px; color: var(--text-muted); font-weight: 500; white-space: nowrap; }
 
@@ -785,6 +785,18 @@ function openModal() {
   renderFoodList('');
   setTimeout(() => document.getElementById('foodSearch').focus(), 100);
 }
+
+// Keep modal above keyboard on mobile
+function adjustModalForKeyboard() {
+  const modal = document.getElementById('modal');
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      const vh = window.visualViewport.height;
+      modal.style.maxHeight = (vh * 0.95) + 'px';
+    });
+  }
+}
+adjustModalForKeyboard();
 
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
