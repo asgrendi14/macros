@@ -239,6 +239,20 @@
     .lib-card-del:hover { color: var(--accent-light); }
     .lib-card-custom { border-left: 2px solid var(--accent); }
 
+
+    /* ── MEAL TEMPLATES ── */
+    .templates-wrap { margin-bottom: 12px; }
+    .template-card { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .template-left { flex: 1; min-width: 0; }
+    .template-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .template-items { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
+    .template-macros { display: flex; gap: 10px; }
+    .template-macro { font-size: 11px; font-weight: 500; }
+    .template-log-btn { background: var(--accent); color: #fff; border: none; border-radius: var(--radius-sm); padding: 10px 16px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; white-space: nowrap; transition: opacity 0.15s; flex-shrink: 0; }
+    .template-log-btn:hover { opacity: 0.85; }
+    .template-log-btn.logged { background: var(--surface3); color: var(--fat); }
+    .templates-section-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; margin-bottom: 8px; }
+
   </style>
 </head>
 <body>
@@ -302,6 +316,8 @@
         <span class="diary-title">My Diary</span>
         <span class="diary-sub" id="diaryLabel">Today</span>
       </div>
+      <div class="templates-wrap" id="templatesWrap"></div>
+
       <div class="meal-tabs">
         <button class="meal-tab active" data-meal="Breakfast">Breakfast</button>
         <button class="meal-tab" data-meal="Lunch">Lunch</button>
@@ -507,6 +523,39 @@ const FOOD_LIBRARY = [
   { id:14, name: 'Cherries',          type: 'gram',    unit: 'g',       per: 100, cal: 64.3, pro: 0.5,  carb: 16,  fat: 0    },
 ];
 
+// ── MEAL TEMPLATES ──
+const MEAL_TEMPLATES = [
+  {
+    id: 'breakfast-staple',
+    name: 'Breakfast Staple',
+    meal: 'Breakfast',
+    items: [
+      { foodId: 8,  amount: 100  },  // Jasmine Rice (cooked) 100g
+      { foodId: 2,  amount: 185  },  // Egg Whites 185g
+      { foodId: 1,  amount: 1    },  // Eggs 1 egg
+      { foodId: 3,  amount: 85   },  // Broccoli Slaw 85g
+      { foodId: 6,  amount: 20   },  // PK Sauce 20g
+    ]
+  }
+];
+
+function resolveTemplateEntries(template) {
+  return template.items.map(item => {
+    const food = FOOD_LIBRARY.find(f => f.id === item.foodId);
+    if (!food) return null;
+    const m = calcMacros(food, item.amount);
+    const amountLabel = food.type === 'gram' ? item.amount + 'g' : item.amount + ' ' + (item.amount === 1 ? food.unit.replace(/s$/,'') : food.unit);
+    return { name: food.name, amountLabel, ...m };
+  }).filter(Boolean);
+}
+
+function templateTotals(template) {
+  const entries = resolveTemplateEntries(template);
+  return entries.reduce((a, f) => ({
+    cal: a.cal + f.cal, pro: a.pro + f.pro, carb: a.carb + f.carb, fat: a.fat + f.fat
+  }), { cal: 0, pro: 0, carb: 0, fat: 0 });
+}
+
 // ── STATE ──
 const TARGETS = { cal: 2000, pro: 180, carb: 150, fat: 60 };
 const CIRC = 2 * Math.PI * 78;
@@ -637,6 +686,7 @@ function render() {
   }
 
   updateTrend();
+  renderTemplates();
 }
 
 // ── TREND CHART ──
@@ -679,6 +729,62 @@ function updateTrend() {
       }
     });
   }
+}
+
+// ── RENDER MEAL TEMPLATES ──
+function renderTemplates() {
+  const wrap = document.getElementById('templatesWrap');
+  if (!wrap) return;
+
+  // Only show templates relevant to active meal
+  const relevant = MEAL_TEMPLATES.filter(t => t.meal === activeMeal);
+  if (relevant.length === 0) { wrap.innerHTML = ''; return; }
+
+  wrap.innerHTML = '';
+  const label = document.createElement('div');
+  label.className = 'templates-section-label';
+  label.textContent = 'Quick Log';
+  wrap.appendChild(label);
+
+  relevant.forEach(template => {
+    const t = templateTotals(template);
+    const entries = resolveTemplateEntries(template);
+    const itemNames = entries.map(e => e.amountLabel + ' ' + e.name).join(' · ');
+
+    // Check if already logged today
+    const dayFoods = getDay(dayOffset)[template.meal] || [];
+    const alreadyLogged = dayFoods.some(f => f._templateId === template.id);
+
+    const card = document.createElement('div');
+    card.className = 'template-card';
+    card.innerHTML = `
+      <div class="template-left">
+        <div class="template-name">${template.name}</div>
+        <div class="template-items">${itemNames}</div>
+        <div class="template-macros">
+          <span class="template-macro" style="color:var(--text)">${t.cal} kcal</span>
+          <span class="template-macro" style="color:var(--pro)">${r1(t.pro)}g P</span>
+          <span class="template-macro" style="color:var(--carb)">${r1(t.carb)}g C</span>
+          <span class="template-macro" style="color:var(--fat)">${r1(t.fat)}g F</span>
+        </div>
+      </div>
+      <button class="template-log-btn ${alreadyLogged ? 'logged' : ''}" data-template-id="${template.id}">
+        ${alreadyLogged ? '✓ Logged' : 'Log Meal'}
+      </button>`;
+
+    card.querySelector('.template-log-btn').addEventListener('click', () => {
+      if (alreadyLogged) return;
+      const entries = resolveTemplateEntries(template);
+      entries.forEach(entry => {
+        entry._templateId = template.id;
+        getDay(dayOffset)[template.meal].push(entry);
+      });
+      save();
+      render();
+    });
+
+    wrap.appendChild(card);
+  });
 }
 
 // ── LIBRARY SCREEN ──
